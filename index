@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pastel Ops Toolkit</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>tailwind.config={theme:{extend:{colors:{ink:'#4A4543',cream:'#FAF8F5',blush:'#FFD6E0',lav:'#E4D9FF',mint:'#CFF3E2'}}}}</script>
+<style>
+:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:#FAF8F5;color:#4A4543;font-family:ui-rounded,'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif}
+.card{background:#fff;border-radius:1rem;box-shadow:0 4px 18px rgba(74,69,67,.08);padding:1.25rem}
+.btn{padding:.55rem 1.1rem;border-radius:9999px;font-weight:700;background:#FFD6E0;color:#4A4543;transition:.15s;cursor:pointer;font-size:.9rem}
+.btn:hover{filter:brightness(.96);transform:translateY(-1px)}
+.btn.lav{background:#E4D9FF}.btn.mint{background:#CFF3E2}.btn.on{box-shadow:inset 0 0 0 2px #4A4543}
+.inp{border:2px solid #F0EAE4;border-radius:.75rem;padding:.45rem .7rem;background:#fff;color:#4A4543;width:100%}
+.inp:focus{outline:none;border-color:#E4D9FF}
+.drop{border:2px dashed #E4D9FF;border-radius:1rem;background:#FCFAFF;padding:1rem;text-align:center;cursor:pointer;display:block}
+canvas{max-width:100%}
+#edc{touch-action:none;cursor:crosshair;max-height:68vh;border-radius:.75rem}
+.tip{position:absolute;bottom:115%;left:50%;transform:translateX(-50%);background:#4A4543;color:#fff;font-size:.8rem;padding:.3rem .7rem;border-radius:.6rem;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s}
+.tip.show{opacity:1}
+</style>
+</head>
+<body class="min-h-screen">
+<header class="max-w-5xl mx-auto px-4 pt-6">
+  <h1 class="text-2xl font-extrabold">✨ Pastel Ops Toolkit</h1>
+  <nav class="flex flex-wrap gap-2 mt-4" id="tabs">
+    <button class="btn on" data-t="s1">🖼️ Proof Grid</button>
+    <button class="btn lav" data-t="s2">💧 Watermarker</button>
+    <button class="btn mint" data-t="s3">💬 Chat Rewriter</button>
+  </nav>
+</header>
+<main class="max-w-5xl mx-auto p-4 pb-12">
+
+<!-- 1. GRID -->
+<section id="s1" class="grid lg:grid-cols-5 gap-4">
+  <div class="card lg:col-span-2 space-y-4">
+    <label class="drop"><input id="gfiles" type="file" accept="image/*" multiple class="hidden">📤 <b>Upload screenshots</b><br><span class="text-xs opacity-70">20+ at once is fine</span></label>
+    <div id="thumbs" class="grid grid-cols-4 gap-2 max-h-64 overflow-auto"></div>
+    <p class="text-xs opacity-70">Tap ✎ on a photo, then drag boxes over usernames to pixelate them.</p>
+    <div class="flex items-center gap-2"><b class="text-sm">Columns</b>
+      <button class="btn mint on" data-c="3">3</button><button class="btn mint" data-c="4">4</button>
+      <button id="gclear" class="btn ml-auto text-xs">Clear all</button></div>
+    <div><b class="text-sm">Watermark</b><div id="gwm" class="mt-2"></div></div>
+  </div>
+  <div class="card lg:col-span-3">
+    <div class="flex items-center justify-between mb-3"><b>Preview</b><button id="gdl" class="btn lav">⬇️ Download Collage</button></div>
+    <p id="gempty" class="text-sm opacity-60 py-16 text-center">Your collage will show up here 🌸</p>
+    <div class="overflow-auto max-h-[70vh] rounded-xl"><canvas id="gc" class="w-full hidden rounded-xl"></canvas></div>
+  </div>
+</section>
+
+<!-- 2. MEDIA -->
+<section id="s2" class="hidden grid lg:grid-cols-5 gap-4">
+  <div class="card lg:col-span-2 space-y-4">
+    <label class="drop"><input id="mfile" type="file" accept="image/*,video/mp4,video/quicktime,video/*" class="hidden">📤 <b>Upload a photo or short video</b><br><span class="text-xs opacity-70">.jpg .png .mp4 .mov</span></label>
+    <div><b class="text-sm">Watermark</b><div id="mwm" class="mt-2"></div></div>
+    <button id="mbtn" class="btn lav w-full">⬇️ Download</button>
+    <p id="mprog" class="text-xs opacity-70"></p>
+    <p class="text-xs opacity-60">Videos are re-recorded in real time in your browser (keep this tab open). Output is .mp4 where supported, otherwise .webm.</p>
+  </div>
+  <div class="card lg:col-span-3"><p id="mempty" class="text-sm opacity-60 py-16 text-center">Preview appears here 💧</p>
+    <canvas id="mc" class="w-full hidden rounded-xl"></canvas></div>
+</section>
+
+<!-- 3. REWRITER -->
+<section id="s3" class="hidden max-w-2xl mx-auto space-y-4">
+  <div class="card space-y-3">
+    <b>Indonesian notes → natural English</b>
+    <textarea id="rin" rows="4" class="inp" placeholder="contoh: aku lagi nunggu comeback bias banget, tolong kirimin buktinya ya"></textarea>
+    <div class="flex flex-wrap gap-2" id="tones">
+      <button class="btn on" data-tone="chill">🎀 Chill K-pop Stan</button>
+      <button class="btn lav" data-tone="short">⚡ Short & Direct</button>
+      <button class="btn mint" data-tone="polite">🌸 Polite & Sweet</button>
+    </div>
+    <button id="rgo" class="btn w-full">Transform ✨</button>
+  </div>
+  <div class="card">
+    <div class="flex gap-3 items-start">
+      <textarea id="rout" rows="4" class="inp" placeholder="your english text shows up here"></textarea>
+      <div class="relative"><span id="tip" class="tip">Copied! ✨</span>
+        <button id="rcopy" class="btn mint !py-3 !px-5 text-base">📋 Copy</button></div>
+    </div>
+    <p class="text-xs opacity-60 mt-2">Rule-based and offline. Hit Transform again for another variation, and tweak the text freely.</p>
+  </div>
+</section>
+</main>
+
+<!-- CENSOR EDITOR -->
+<div id="ed" style="display:none" class="fixed inset-0 z-50 bg-[#4A4543]/40 items-center justify-center p-3">
+  <div class="card max-w-3xl w-full">
+    <div class="flex justify-between items-center mb-2"><b id="edt">Censor</b><span class="text-xs opacity-70">drag to draw a box</span></div>
+    <div class="flex justify-center"><canvas id="edc"></canvas></div>
+    <div class="flex flex-wrap gap-2 mt-3">
+      <button id="edp" class="btn lav">←</button><button id="edn" class="btn lav">→</button>
+      <button id="edu" class="btn mint">Undo</button><button id="edx" class="btn mint">Clear</button>
+      <button id="edd" class="btn ml-auto">Done ✓</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const loadImg=f=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=URL.createObjectURL(f)});
+const dl=(b,n)=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;a.click()};
+const debounce=(f,ms)=>{let t;return()=>{clearTimeout(t);t=setTimeout(f,ms)}};
+
+/* tabs */
+$('tabs').onclick=e=>{const t=e.target.dataset.t;if(!t)return;
+  ['s1','s2','s3'].forEach(s=>$(s).classList.toggle('hidden',s!==t));
+  [...$('tabs').children].forEach(b=>b.classList.toggle('on',b.dataset.t===t))};
+
+/* watermark controls */
+const wmLogo={};
+function mountWM(p,cb){
+  const root=$(p+'wm');
+  root.innerHTML=`<div class="grid gap-3 text-sm">
+  <select id="${p}type" class="inp"><option value="text">Text</option><option value="logo">Logo</option></select>
+  <input id="${p}text" class="inp" value="@myhandle" placeholder="Watermark text">
+  <input id="${p}logo" type="file" accept="image/*" class="hidden text-xs">
+  <select id="${p}pat" class="inp"><option value="single">Single (corner)</option><option value="diag">Repeating, diagonal</option><option value="straight">Repeating, straight</option></select>
+  <label>Opacity <input id="${p}op" type="range" min="5" max="100" value="45" class="w-full accent-pink-300"></label>
+  <label>Size <input id="${p}sz" type="range" min="2" max="20" value="6" class="w-full accent-purple-300"></label></div>`;
+  const sync=()=>{const l=$(p+'type').value==='logo';$(p+'text').classList.toggle('hidden',l);$(p+'logo').classList.toggle('hidden',!l)};
+  root.addEventListener('input',async e=>{
+    if(e.target.id===p+'logo'){const f=e.target.files[0];if(f){wmLogo[p]=await loadImg(f);cb()}return}
+    sync();cb()});
+  sync();
+}
+const getWM=p=>({type:$(p+'type').value,text:$(p+'text').value,logo:wmLogo[p],pat:$(p+'pat').value,op:$(p+'op').value/100,sz:+$(p+'sz').value});
+function drawWM(ctx,w,h,o){
+  if(o.type==='text'&&!o.text.trim())return; if(o.type==='logo'&&!o.logo)return;
+  const u=Math.min(w,h)*o.sz/100;let iw,ih,draw;
+  ctx.save();ctx.globalAlpha=o.op;
+  if(o.type==='text'){ctx.font=`700 ${u}px system-ui,sans-serif`;iw=ctx.measureText(o.text).width;ih=u;
+    draw=(x,y)=>{ctx.textAlign='center';ctx.textBaseline='middle';ctx.shadowColor='rgba(0,0,0,.5)';ctx.shadowBlur=u/6;ctx.fillStyle='#fff';ctx.fillText(o.text,x,y)}}
+  else{iw=u*4;ih=iw*o.logo.height/o.logo.width;draw=(x,y)=>ctx.drawImage(o.logo,x-iw/2,y-ih/2,iw,ih)}
+  if(o.pat==='single')draw(w-iw/2-u,h-ih/2-u);
+  else{const gx=iw*1.7,gy=ih*3.2,dg=o.pat==='diag',D=Math.hypot(w,h),X=dg?D:w/2,Y=dg?D:h/2;
+    ctx.translate(w/2,h/2);if(dg)ctx.rotate(-Math.PI/6);
+    let r=0;for(let y=-Y;y<Y;y+=gy,r++)for(let x=-X+(r%2?gx/2:0);x<X;x+=gx)draw(x,y)}
+  ctx.restore();
+}
+function censor(ctx,x,y,w,h){
+  x=Math.round(x);y=Math.round(y);w=Math.round(w);h=Math.round(h);if(w<2||h<2)return;
+  const ps=Math.max(8,h/2.5),tw=Math.max(1,Math.round(w/ps)),th=Math.max(1,Math.round(h/ps));
+  const t=document.createElement('canvas');t.width=tw;t.height=th;
+  t.getContext('2d').drawImage(ctx.canvas,x,y,w,h,0,0,tw,th);
+  ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(t,0,0,tw,th,x,y,w,h);ctx.restore();
+}
+
+/* ===== 1. GRID ===== */
+let items=[],cols=3,cur=0;
+$('gfiles').onchange=async e=>{const fs=[...e.target.files];e.target.value='';
+  const imgs=await Promise.all(fs.map(loadImg));imgs.forEach(img=>items.push({img,boxes:[]}));thumbs();render()};
+function thumbs(){
+  $('thumbs').innerHTML=items.map((it,i)=>`<div class="relative"><img src="${it.img.src}" class="rounded-xl aspect-square object-cover w-full">
+  <button data-e="${i}" class="btn mint absolute bottom-1 left-1 !py-0.5 !px-2 text-xs">✎ ${it.boxes.length||''}</button>
+  <button data-r="${i}" class="btn absolute top-1 right-1 !py-0 !px-2 text-xs">✕</button></div>`).join('')}
+$('thumbs').onclick=e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.e!==undefined)openEd(+b.dataset.e);
+  if(b.dataset.r!==undefined){items.splice(+b.dataset.r,1);thumbs();render()}};
+$('gclear').onclick=()=>{items=[];thumbs();render()};
+document.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{cols=+b.dataset.c;
+  document.querySelectorAll('[data-c]').forEach(x=>x.classList.toggle('on',x===b));render()});
+const render=debounce(()=>{
+  const c=$('gc');
+  if(!items.length){c.classList.add('hidden');$('gempty').classList.remove('hidden');return}
+  $('gempty').classList.add('hidden');c.classList.remove('hidden');
+  const gap=14,pad=14;let cw=520,rows;
+  const lay=cw=>{rows=[];let H=pad;for(let i=0;i<items.length;i+=cols){
+    const hs=items.slice(i,i+cols).map(it=>it.img.height*cw/it.img.width);const rh=Math.max(...hs);
+    rows.push({y:H,hs});H+=rh+gap}return H-gap+pad};
+  let H=lay(cw);if(H>14000){cw=cw*14000/H;H=lay(cw)}
+  const W=Math.round(pad*2+cols*cw+(cols-1)*gap);c.width=W;c.height=Math.round(H);
+  const x2=c.getContext('2d');x2.fillStyle='#fff';x2.fillRect(0,0,W,H);
+  items.forEach((it,i)=>{const r=rows[Math.floor(i/cols)],h=r.hs[i%cols],x=pad+(i%cols)*(cw+gap);
+    x2.drawImage(it.img,x,r.y,cw,h);it.boxes.forEach(b=>censor(x2,x+b.x*cw,r.y+b.y*h,b.w*cw,b.h*h))});
+  drawWM(x2,W,H,getWM('g'));
+},120);
+mountWM('g',render);
+$('gdl').onclick=()=>{if(items.length)$('gc').toBlob(b=>dl(b,'proof-collage.png'))};
+
+/* censor editor */
+let drag=null;const edc=$('edc');
+function openEd(i){cur=i;$('ed').style.display='flex';edDraw()}
+function edDraw(){
+  const it=items[cur];if(!it)return;const sc=Math.min(1,1400/it.img.width);
+  edc.width=Math.round(it.img.width*sc);edc.height=Math.round(it.img.height*sc);
+  const x=edc.getContext('2d');x.drawImage(it.img,0,0,edc.width,edc.height);
+  it.boxes.forEach(b=>{censor(x,b.x*edc.width,b.y*edc.height,b.w*edc.width,b.h*edc.height)});
+  if(drag){x.fillStyle='rgba(255,214,224,.45)';x.strokeStyle='#E75480';x.lineWidth=2;
+    const r=dragRect();x.fillRect(r.x*edc.width,r.y*edc.height,r.w*edc.width,r.h*edc.height);
+    x.strokeRect(r.x*edc.width,r.y*edc.height,r.w*edc.width,r.h*edc.height)}
+  $('edt').textContent=`Censor ${cur+1} / ${items.length} · ${it.boxes.length} box(es)`;
+}
+const dragRect=()=>({x:Math.min(drag.x0,drag.x1),y:Math.min(drag.y0,drag.y1),w:Math.abs(drag.x1-drag.x0),h:Math.abs(drag.y1-drag.y0)});
+const pt=e=>{const r=edc.getBoundingClientRect();return[Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),Math.min(1,Math.max(0,(e.clientY-r.top)/r.height))]};
+edc.onpointerdown=e=>{edc.setPointerCapture(e.pointerId);const[x,y]=pt(e);drag={x0:x,y0:y,x1:x,y1:y}};
+edc.onpointermove=e=>{if(!drag)return;[drag.x1,drag.y1]=pt(e);edDraw()};
+edc.onpointerup=()=>{if(!drag)return;const r=dragRect();drag=null;
+  if(r.w>.006&&r.h>.006)items[cur].boxes.push(r);edDraw();thumbs();render()};
+$('edu').onclick=()=>{items[cur].boxes.pop();edDraw();thumbs();render()};
+$('edx').onclick=()=>{items[cur].boxes=[];edDraw();thumbs();render()};
+$('edp').onclick=()=>{cur=(cur-1+items.length)%items.length;edDraw()};
+$('edn').onclick=()=>{cur=(cur+1)%items.length;edDraw()};
+$('edd').onclick=()=>{$('ed').style.display='none'};
+
+/* ===== 2. MEDIA ===== */
+let mm=null,rec=false;
+$('mfile').onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;const url=URL.createObjectURL(f);
+  if(f.type.startsWith('video')||/\.(mp4|mov)$/i.test(f.name)){
+    const v=document.createElement('video');v.src=url;v.playsInline=true;v.preload='auto';
+    await new Promise(r=>{v.onloadeddata=r;v.onerror=r});
+    v.currentTime=.05;await new Promise(r=>{v.onseeked=r;setTimeout(r,800)});
+    mm={k:'v',el:v};
+  }else mm={k:'i',el:await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=url})};
+  $('mbtn').textContent=mm.k==='v'?'🎬 Process & Download video':'⬇️ Download photo';
+  $('mprog').textContent='';mdraw();
+};
+function msize(){const el=mm.el,w=mm.k==='v'?el.videoWidth:el.width,h=mm.k==='v'?el.videoHeight:el.height;
+  const s=Math.min(1,(mm.k==='v'?1920:4096)/Math.max(w,h));return[Math.round(w*s),Math.round(h*s)]}
+function mdraw(){
+  if(!mm||rec)return;const c=$('mc'),[w,h]=msize();
+  if(c.width!==w||c.height!==h){c.width=w;c.height=h}
+  c.classList.remove('hidden');$('mempty').classList.add('hidden');
+  const x=c.getContext('2d');x.drawImage(mm.el,0,0,w,h);drawWM(x,w,h,getWM('m'));
+}
+mountWM('m',mdraw);
+$('mbtn').onclick=async()=>{
+  if(!mm||rec)return;const c=$('mc');
+  if(mm.k==='i'){mdraw();return c.toBlob(b=>dl(b,'watermarked.png'))}
+  const v=mm.el,x=c.getContext('2d');rec=true;
+  v.currentTime=0;await new Promise(r=>{v.onseeked=r;setTimeout(r,600)});
+  const stream=c.captureStream(30);
+  try{if(!v._a){const ac=new AudioContext(),s=ac.createMediaElementSource(v),d=ac.createMediaStreamDestination();s.connect(d);v._a=d}
+    v._a.stream.getAudioTracks().forEach(t=>stream.addTrack(t))}catch(_){}
+  const mime=['video/mp4;codecs=avc1,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+  const mr=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:6e6}),ch=[];
+  mr.ondataavailable=e=>e.data.size&&ch.push(e.data);
+  mr.onstop=()=>{rec=false;$('mprog').textContent='Done! Your download should start ✨';
+    dl(new Blob(ch,{type:mime}),'watermarked.'+(mime.includes('mp4')?'mp4':'webm'));mdraw()};
+  const tick=()=>{x.drawImage(v,0,0,c.width,c.height);drawWM(x,c.width,c.height,getWM('m'));
+    $('mprog').textContent=`Processing… ${Math.round(v.currentTime/v.duration*100||0)}%`;
+    if(!v.ended&&rec)requestAnimationFrame(tick)};
+  v.onended=()=>mr.stop();mr.start(500);await v.play();tick();
+};
+
+/* ===== 3. REWRITER ===== */
+const D={
+"terima kasih banyak":"tysm","makasih banyak":"tysm","makasih":"thanks","terima kasih":"thank you","thanks":"thanks","tq":"thanks","thx":"thanks",
+"ngomong-ngomong":"btw","omong-omong":"btw","jujur aja":"tbh","jujur":"tbh","menurut aku":"imo","menurutku":"imo","menurut gue":"imo","menurut saya":"imo",
+"gak tau":"idk","nggak tau":"idk","ga tau":"idk","gak tahu":"idk","tidak tahu":"idk","gatau":"idk",
+"gak bisa":"can’t","nggak bisa":"can’t","ga bisa":"can’t","tidak bisa":"can’t","enggak bisa":"can’t","gabisa":"can’t",
+"gak mau":"don’t want to","nggak mau":"don’t want to","ga mau":"don’t want to","gak usah":"no need","ga usah":"no need",
+"suka banget":"love","suka bgt":"love","sayang banget":"love","cinta banget":"love",
+"lagi nonton":"watching","lagi dengerin":"listening to","lagi makan":"eating","lagi tidur":"sleeping","lagi streaming":"streaming","lagi kerja":"working","lagi belajar":"studying","lagi mikir":"thinking","lagi nunggu":"waiting for","lagi nungguin":"waiting for",
+"hari ini":"today","malam ini":"tonight","pagi ini":"this morning","sore ini":"this afternoon","di mana":"where","ya ampun":"omg","astaga":"omg","demi apa":"fr","serius deh":"fr",
+"banget":"~B","bgt":"~B","bet":"~B",
+"sekarang":"rn","skrg":"rn","barusan":"just now","tadi":"earlier","besok":"tmrw","kemarin":"yesterday","nanti":"later","tolong":"pls","please":"pls","dong":"","deh":"","sih":"","kok":"","nih":"","tuh":"","lho":"","loh":"","kan":"","ya":"","yaa":"","yah":"","aja":"just","saja":"just","doang":"just","cuma":"just",
+"aku":"i","saya":"i","gue":"i","gw":"i","aq":"i","sy":"i","kamu":"you","kau":"you","lu":"you","lo":"you","anda":"you","dia":"they","mereka":"they","kita":"we","kami":"we","kalian":"you guys",
+"gak":"not","ga":"not","nggak":"not","enggak":"not","tidak":"not","tdk":"not","belum":"not yet","blm":"not yet","udah":"already","udh":"already","sudah":"already","sdh":"already","masih":"still",
+"beneran":"fr","serius":"fr","sangat":"so","pasti":"definitely","mungkin":"maybe","emang":"really","banyak":"a lot of","semua":"everyone",
+"tapi":"but","tp":"but","dan":"and","atau":"or","karena":"bc","krn":"bc","soalnya":"bc","kalau":"if","kalo":"if","klo":"if","jadi":"so","juga":"too","jg":"too","yang":"that","yg":"that","ini":"this","itu":"that","di":"at","ke":"to","dari":"from","sama":"with","dengan":"with","dgn":"with","untuk":"for","buat":"for","utk":"for",
+"apa":"what","siapa":"who","kapan":"when","dimana":"where","kenapa":"why","gimana":"how","bagaimana":"how","berapa":"how much","ada":"have",
+"bisa":"can","bs":"can","mau":"want to","pengen":"wanna","pingin":"wanna","ingin":"wanna","harus":"have to","hrs":"have to","boleh":"can","lagi":"",
+"lihat":"see","liat":"see","denger":"hear","dengerin":"listen to","kirim":"send","kirimin":"send","beli":"buy","pesan":"order","ikut":"join","bayar":"pay","kasih":"give","bantu":"help","bantuin":"help","tau":"know","tahu":"know","paham":"get it","ngerti":"get it","lupa":"forgot","inget":"remember","ingat":"remember","percaya":"believe","bohong":"lying","nunggu":"waiting","tunggu":"wait","nungguin":"wait for","nonton":"watch","makan":"eat","tidur":"sleep","kerja":"work","belajar":"study","pulang":"go home","pergi":"go","datang":"come","bikin":"make","cari":"look for","coba":"try","tanya":"ask","jawab":"reply","balas":"reply","bales":"reply","upload":"upload","vote":"vote",
+"kangen":"miss","rindu":"miss","bagus":"good","keren":"so cool","mantap":"slay","cantik":"pretty","ganteng":"handsome","lucu":"cute","capek":"tired","cape":"tired","lelah":"tired","ngantuk":"sleepy","lapar":"hungry","laper":"hungry","senang":"happy","seneng":"happy","sedih":"sad","kesel":"annoyed","bingung":"confused","sibuk":"busy","telat":"late","terlambat":"late","sakit":"sick","gila":"insane","parah":"insane","susah":"hard","sulit":"hard","gampang":"easy","mudah":"easy","cepat":"fast","cepet":"fast","lama":"long","baru":"new","lagu":"song","teman":"friend","temen":"friend","bukti":"proof","foto":"photo","akun":"account","bias":"bias","comeback":"comeback",
+"oke":"ok","iya":"yeah","bener":"right","benar":"right","salah":"wrong","enggak":"no","jangan":"don’t"
+};
+const keys=Object.keys(D).sort((a,b)=>b.length-a.length).map(k=>k.replace(/[-]/g,'\\-'));
+const RX=new RegExp('(?<![a-z])('+keys.join('|')+')(?:nya|ku|mu)?(?![a-z])','g');
+const ADJ='busy|tired|happy|sad|sick|excited|late|hungry|sleepy|annoyed|confused|insane|free|nervous|shook|down|so cool|pretty|cute|good';
+const cop={i:'i’m',you:'you’re',we:'we’re',they:'they’re'};
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const cap=s=>s.replace(/(^\s*|[.!?]\s+|\n\s*)([a-z])/g,(m,a,b)=>a+b.toUpperCase()).replace(/\bi\b/g,'I');
+function base(t){
+  let s=t.toLowerCase().replace(RX,(m,k)=>D[k]);
+  s=s.replace(/(\S+) ~B/g,'so $1').replace(/~B/g,'so').replace(/[ \t]+/g,' ').replace(/ ([,.!?])/g,'$1').trim();
+  s=s.replace(new RegExp('\\b(i|you|we|they)\\s+(so\\s+)?('+ADJ+'|[a-z]+ing)\\b','g'),(m,p,so,a)=>cop[p]+' '+(so||'')+a);
+  return s;
+}
+const TONE={
+chill(s){
+  s=s.replace(/thank you so much/g,'tysm').replace(/thank you/g,'ty').replace(/\bso\b/g,()=>Math.random()<.5?'soo':'so')
+     .replace(/\bi am\b/g,'i’m').replace(/[.]+$/,'');
+  if(/\?$/.test(s))return s+pick(['',' 🥺',' 😭']);
+  if(/!$/.test(s))return s+pick(['',' ✨',' 💗']);
+  return s+pick(['',' 🥹',' 💗',' lol',' 😭',' fr',' ✨']);
+},
+short(s){
+  s=s.replace(/\b(just|really|so|too|definitely|fr)\b\s*/g,'').replace(/\b(btw|tbh|imo|omg)\b,?\s*/g,'')
+     .replace(/\brn\b/g,'now').replace(/\btmrw\b/g,'tomorrow').replace(/\bbc\b/g,'because').replace(/\bpls\b/g,'please')
+     .replace(/\btysm\b/g,'thanks').replace(/\bthank you\b/g,'thanks').replace(/\bwanna\b/g,'want to').replace(/\bidk\b/g,'I don’t know')
+     .replace(/\s+/g,' ').trim();
+  s=cap(s);return /[.!?]$/.test(s)?s:s+'.';
+},
+polite(s){
+  s=s.replace(/\brn\b/g,'right now').replace(/\btmrw\b/g,'tomorrow').replace(/\bbc\b/g,'because').replace(/\bpls\b/g,'please')
+     .replace(/\btysm\b/g,'thank you so much').replace(/\bbtw\b/g,'by the way').replace(/\bidk\b/g,'I’m not sure')
+     .replace(/\bwanna\b/g,'would love to').replace(/\bwant to\b/g,'would like to').replace(/\bimo\b/g,'I think').replace(/\btbh\b/g,'honestly');
+  s=cap(s);if(!/^(hi|hello|hey)\b/i.test(s))s='Hi! '+s;
+  const ask=/please|help|send|can you/i.test(s);
+  if(!/[.!?]$/.test(s))s+='.';
+  return ask?s+' '+pick(['Thank you so much! 💕','Thanks a lot! 🌸','Thank you! 😊']):s;
+}};
+let tone='chill';
+$('tones').onclick=e=>{const t=e.target.dataset.tone;if(!t)return;tone=t;
+  [...$('tones').children].forEach(b=>b.classList.toggle('on',b.dataset.tone===t))};
+$('rgo').onclick=()=>{
+  const lines=$('rin').value.split('\n').filter(l=>l.trim());
+  $('rout').value=lines.map(l=>TONE[tone](base(l))).join('\n');
+};
+$('rcopy').onclick=async()=>{
+  const v=$('rout').value;if(!v)return;
+  try{await navigator.clipboard.writeText(v)}catch(_){$('rout').select();document.execCommand('copy')}
+  const t=$('tip');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1400);
+};
+</script>
+</body>
+</html>

@@ -70,6 +70,10 @@ canvas{max-width:100%}
       </select>
       <button id="gclear" class="btn ml-auto text-xs">Clear all</button>
     </div>
+    
+    <!-- NEW: Button to download all individual censored proof images -->
+    <button id="gdlall" class="btn mint w-full text-xs py-2.5 font-bold">📦 Download All Censored Proofs (Individual)</button>
+
     <div><b class="text-sm">Watermark</b><div id="gwm" class="mt-2"></div></div>
   </div>
   <div class="card lg:col-span-3">
@@ -294,6 +298,35 @@ $('gcolsel').onchange=render;
 
 mountWM('g',render);
 $('gdl').onclick=()=>{if(items.length)$('gc').toBlob(b=>dl(b,'proof-collage.png'))};
+
+// NEW: Batch download individual censored proofs
+$('gdlall').onclick = async () => {
+  if (!items.length) { alert("No proof images uploaded yet!"); return; }
+  
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    const offCanvas = document.createElement('canvas');
+    offCanvas.width = it.img.width;
+    offCanvas.height = it.img.height;
+    const octx = offCanvas.getContext('2d');
+    
+    // Draw original image
+    octx.drawImage(it.img, 0, 0);
+    
+    // Apply blur boxes scaled to original dimensions
+    it.boxes.forEach(b => {
+      heavyBlur(octx, b.x * offCanvas.width, b.y * offCanvas.height, b.w * offCanvas.width, b.h * offCanvas.height);
+    });
+    
+    // Trigger individual download with slight delay to prevent browser download blocking
+    await new Promise(resolve => {
+      offCanvas.toBlob(blob => {
+        dl(blob, `censored-proof-${i + 1}.png`);
+        setTimeout(resolve, 300);
+      }, 'image/png');
+    });
+  }
+};
 
 /* censor editor */
 let drag=null;

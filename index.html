@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Pastel Ops Toolkit - Ultimate V3</title>
+<title>Pastel Ops Toolkit - Ultimate V4</title>
 <script src="https://cdn.tailwindcss.com/3.4.17"></script>
 <script>tailwind.config={theme:{extend:{colors:{ink:'#4A4543',cream:'#FAF8F5',blush:'#FFD6E0',lav:'#E4D9FF',mint:'#CFF3E2'}}}}</script>
 <style>
@@ -46,15 +46,14 @@ canvas{max-width:100%}
       <!-- Interactive Sample Box Selector -->
       <div class="relative bg-purple-50/50 p-2 rounded-xl border border-purple-200 text-center">
         <span class="text-[11px] font-bold text-purple-900 block mb-1">Drag selection box on sample preview:</span>
-        <div id="boxSelectorArea" class="relative inline-block w-full max-h-36 bg-gray-200 rounded-lg overflow-hidden cursor-crosshair border border-purple-300">
-          <canvas id="sampleCanvas" class="w-full object-contain"></canvas>
-          <div id="selectionOverlay" class="absolute border-2 border-pink-500 bg-pink-500/20 hidden pointer-events-none"></div>
+        <div id="boxSelectorArea" class="relative inline-block w-full bg-gray-900 rounded-lg overflow-hidden cursor-crosshair border border-purple-300 flex justify-center items-center min-h-[160px]">
+          <canvas id="sampleCanvas" class="max-w-full h-auto object-contain block mx-auto"></canvas>
+          <div id="selectionOverlay" class="absolute border-2 border-pink-500 bg-pink-500/30 hidden pointer-events-none"></div>
         </div>
         <p id="boxCoordsInfo" class="text-[10px] text-pastelMuted mt-1">No region selected yet (Default: Top Header)</p>
       </div>
 
       <div class="flex gap-2">
-        <button id="gusebox" class="btn lav text-xs flex-1 py-2">📌 Use Selected Region</button>
         <button id="gapplyblur" class="btn mint text-xs flex-1 py-2 font-bold">⚡ Apply to ALL Proofs</button>
       </div>
     </div>
@@ -177,7 +176,8 @@ function heavyBlur(ctx,x,y,w,h){
   ctx.restore();
 }
 
-/* ===== 1. GRID & SELECTABLE BULK CENSOR ===== */
+/* ===== 1. GRID & SELECTABLE BULK CENSOR ===== *
+ * Note: 'items' array stores each uploaded image object and its custom blur boxes. */
 let items=[],cur=0;
 let currentSelectionBox = {x: 0, y: 0, w: 1, h: 0.18}; // default top header
 
@@ -193,8 +193,12 @@ function updateSampleCanvas(){
   const sampleImg = items[0].img;
   const scv = $('sampleCanvas');
   const sctx = scv.getContext('2d');
-  scv.width = 300; scv.height = Math.round(300 * (sampleImg.height / sampleImg.width));
-  sctx.drawImage(sampleImg, 0, 0, scv.width, scv.height);
+  
+  // Set accurate display dimensions preserving aspect ratio
+  scv.width = sampleImg.width; 
+  scv.height = sampleImg.height;
+  sctx.clearRect(0, 0, scv.width, scv.height);
+  sctx.drawImage(sampleImg, 0, 0);
 }
 
 // Mouse interaction on sample selector preview
@@ -202,7 +206,6 @@ const sampleArea = $('boxSelectorArea');
 const overlay = $('selectionOverlay');
 let isSelecting = false, startPos = {x:0, y:0};
 
-/* Hoist render function to avoid ReferenceError before initialization */
 const render=debounce(()=>{
   const c=$('gc');
   if(!items.length){c.classList.add('hidden');$('gempty').classList.remove('hidden');return}
@@ -224,34 +227,41 @@ sampleArea.onpointerdown = e => {
   if(!items.length) return;
   sampleArea.setPointerCapture(e.pointerId);
   isSelecting = true;
-  const rect = sampleArea.getBoundingClientRect();
-  startPos = { x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height };
+  const canvasEl = $('sampleCanvas');
+  const cRect = canvasEl.getBoundingClientRect();
+  
+  startPos = { 
+    x: Math.max(0, Math.min(1, (e.clientX - cRect.left) / cRect.width)), 
+    y: Math.max(0, Math.min(1, (e.clientY - cRect.top) / cRect.height)) 
+  };
 };
 
 sampleArea.onpointermove = e => {
   if(!isSelecting) return;
-  const rect = sampleArea.getBoundingClientRect();
-  const curX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-  const curY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+  const canvasEl = $('sampleCanvas');
+  const cRect = canvasEl.getBoundingClientRect();
+  const curX = Math.max(0, Math.min(1, (e.clientX - cRect.left) / cRect.width));
+  const curY = Math.max(0, Math.min(1, (e.clientY - cRect.top) / cRect.height));
 
-  const left = Math.min(startPos.x, curX) * 100;
-  const top = Math.min(startPos.y, curY) * 100;
-  const width = Math.abs(curX - startPos.x) * 100;
-  const height = Math.abs(curY - startPos.y) * 100;
+  const left = Math.min(startPos.x, curX) * cRect.width;
+  const top = Math.min(startPos.y, curY) * cRect.height;
+  const width = Math.abs(curX - startPos.x) * cRect.width;
+  const height = Math.abs(curY - startPos.y) * cRect.height;
 
-  overlay.style.left = left + '%';
-  overlay.style.top = top + '%';
-  overlay.style.width = width + '%';
-  overlay.style.height = height + '%';
+  overlay.style.left = (cRect.left - sampleArea.getBoundingClientRect().left + left) + 'px';
+  overlay.style.top = (cRect.top - sampleArea.getBoundingClientRect().top + top) + 'px';
+  overlay.style.width = width + 'px';
+  overlay.style.height = height + 'px';
   overlay.classList.remove('hidden');
 };
 
 sampleArea.onpointerup = e => {
   if(!isSelecting) return;
   isSelecting = false;
-  const rect = sampleArea.getBoundingClientRect();
-  const endX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-  const endY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+  const canvasEl = $('sampleCanvas');
+  const cRect = canvasEl.getBoundingClientRect();
+  const endX = Math.max(0, Math.min(1, (e.clientX - cRect.left) / cRect.width));
+  const endY = Math.max(0, Math.min(1, (e.clientY - cRect.top) / cRect.height));
 
   currentSelectionBox = {
     x: Math.min(startPos.x, endX),
@@ -260,8 +270,7 @@ sampleArea.onpointerup = e => {
     h: Math.max(0.05, Math.abs(endY - startPos.y))
   };
 
-  $('boxCoordsInfo.innerText') = `Selected Area: X:${Math.round(currentSelectionBox.x*100)}% Y:${Math.round(currentSelectionBox.y*100)}% W:${Math.round(currentSelectionBox.w*100)}% H:${Math.round(currentSelectionBox.h*100)}%`;
-  $('boxCoordsInfo').textContent = `✨ Region selected! Ready to apply to all proofs.`;
+  $('boxCoordsInfo').textContent = `✨ Region selected! X:${Math.round(currentSelectionBox.x*100)}% Y:${Math.round(currentSelectionBox.y*100)}% W:${Math.round(currentSelectionBox.w*100)}% H:${Math.round(currentSelectionBox.h*100)}%`;
 };
 
 $('gapplyblur').onclick = () => {
